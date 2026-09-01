@@ -10,6 +10,7 @@ import 'package:profit_track/features/reports/presentation/reports_screen.dart';
 import 'package:profit_track/features/sales/domain/sale.dart';
 import 'package:profit_track/features/sales/presentation/add_sale_screen.dart';
 import 'package:profit_track/features/sales/presentation/sales_screen.dart';
+import 'package:profit_track/features/seller_tools/presentation/seller_tools_screen.dart';
 import 'package:profit_track/features/settings/presentation/more_screen.dart';
 import 'package:profit_track/features/settings/presentation/privacy_screen.dart';
 import 'package:profit_track/features/settings/presentation/settings_screen.dart';
@@ -64,6 +65,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/privacy',
         builder: (context, state) => const PrivacyScreen(),
+      ),
+      GoRoute(
+        path: '/seller-tools',
+        builder: (context, state) => const SellerToolsScreen(),
       ),
     ],
   );

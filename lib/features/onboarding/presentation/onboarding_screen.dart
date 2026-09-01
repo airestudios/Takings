@@ -15,9 +15,10 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final controller = PageController();
   int page = 0;
+  final nameController = TextEditingController();
   String country = 'GB';
   String currency = 'GBP';
-  final marketplaces = <String>{'Vinted', 'eBay'};
+  final marketplaces = <String>{};
   String sellerProfile = 'A mixture of both';
   String importChoice = 'Start fresh';
   String goalType = 'Monthly profit';
@@ -26,6 +27,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void dispose() {
     controller.dispose();
+    nameController.dispose();
     goalController.dispose();
     super.dispose();
   }
@@ -40,33 +42,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: AppColors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'P',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 25,
-                          fontWeight: FontWeight.w800,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.asset(
+                      'assets/images/takings_icon.png',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
                     ),
                   ),
                   const SizedBox(width: 10),
                   const Text(
-                    'ProfitTrack',
+                    'Takings',
                     style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
                   ),
                   const Spacer(),
                   Text(
-                    '${page + 1} of 8',
+                    '${page + 1} of 9',
                     style: const TextStyle(
                       color: AppColors.slate,
                       fontSize: 12,
@@ -80,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: (page + 1) / 8,
+                  value: (page + 1) / 9,
                   minHeight: 5,
                   backgroundColor: AppColors.line,
                   color: AppColors.green,
@@ -94,6 +86,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (value) => setState(() => page = value),
                 children: [
                   const _WelcomePage(),
+                  _ChoicePage(
+                    title: 'What should we call you?',
+                    subtitle:
+                        'We’ll use your name to personalise your dashboard.',
+                    child: _NameSetup(
+                      controller: nameController,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
                   _ChoicePage(
                     title: 'Where are you based?',
                     subtitle:
@@ -154,6 +155,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         'Give yourself a clear target. You can manage multiple goals later.',
                     child: _GoalSetup(
                       type: goalType,
+                      currency: currency,
                       controller: goalController,
                       onChanged: (value) => setState(() => goalType = value),
                     ),
@@ -179,20 +181,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     )
                   else
                     const Spacer(),
-                  if (page > 0) const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: page == 7 ? _finish : _next,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.green,
-                        minimumSize: const Size.fromHeight(48),
+                  const SizedBox(width: 12),
+                  TextButton.icon(
+                    onPressed: page == 1 && nameController.text.trim().isEmpty
+                        ? null
+                        : page == 8
+                            ? _finish
+                            : _next,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
                       ),
-                      child: Text(
-                        page == 7 ? 'Start tracking' : 'Continue',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      foregroundColor: AppColors.green,
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    label: Text(page == 8 ? 'Start tracking' : 'Next'),
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 22),
                   ),
                 ],
               ),
@@ -220,6 +230,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool('onboarding_completed', true);
+    await preferences.setString('display_name', nameController.text.trim());
     await preferences.setString('country_code', country);
     await preferences.setString('currency_code', currency);
     await preferences.setStringList('marketplaces', marketplaces.toList());
@@ -238,33 +249,52 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ChoicePage(
-      title: 'Know exactly what you’re making',
-      subtitle:
-          'Fast, private reseller tracking that works even when you’re offline.',
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          const _Benefit(
-            icon: Icons.trending_up_rounded,
-            title: 'Track reseller earnings',
-            text:
-                'See real profit after purchase costs, fees, postage and packaging.',
-          ),
-          const SizedBox(height: 10),
-          const _Benefit(
-            icon: Icons.track_changes_rounded,
-            title: 'Reach profit goals',
-            text: 'Know if you’re on pace and what you need each day.',
-          ),
-          const SizedBox(height: 10),
-          const _Benefit(
-            icon: Icons.shield_outlined,
-            title: 'Monitor important thresholds',
-            text:
-                'Get general guidance as your recorded activity approaches relevant rules.',
-          ),
-        ],
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/takings_background.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 26, 20, 18),
+        child: Column(
+          children: [
+            const SizedBox(height: 4),
+            Image.asset(
+              'assets/images/takings_icon.png',
+              width: 126,
+              height: 126,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 18),
+            Image.asset(
+              'assets/images/takings_wordmark.png',
+              width: 280,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 30),
+            const _Benefit(
+              icon: Icons.trending_up_rounded,
+              title: 'Track reseller earnings',
+              text:
+                  'See real profit after purchase costs, fees, postage and packaging.',
+            ),
+            const SizedBox(height: 10),
+            const _Benefit(
+              icon: Icons.track_changes_rounded,
+              title: 'Reach profit goals',
+              text: 'Know if you’re on pace and what you need each day.',
+            ),
+            const SizedBox(height: 10),
+            const _Benefit(
+              icon: Icons.shield_outlined,
+              title: 'Monitor important thresholds',
+              text:
+                  'Get general guidance as your recorded activity approaches relevant rules.',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -386,8 +416,8 @@ class _CurrencyPicker extends StatelessWidget {
       labels: const {
         'GBP': '£  British pound',
         'USD': r'$  US dollar',
-        'CAD': r'C$  Canadian dollar',
-        'AUD': r'A$  Australian dollar',
+        'CAD': r'$  Canadian dollar',
+        'AUD': r'$  Australian dollar',
         'EUR': '€  Euro',
       },
       selected: value,
@@ -425,7 +455,7 @@ class _MarketplacePicker extends StatelessWidget {
               selected: values.contains(value),
               onSelected: (_) => onChanged(value),
               selectedColor: AppColors.paleGreen,
-              checkmarkColor: AppColors.green,
+              showCheckmark: false,
               side: BorderSide(
                 color: values.contains(value)
                     ? AppColors.green
@@ -503,8 +533,8 @@ class _ImportChoices extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const values = [
-      ('Connect eBay', Icons.link_rounded),
-      ('Connect Etsy', Icons.link_rounded),
+      ('Connect eBay', Icons.storefront_outlined),
+      ('Connect Etsy', Icons.storefront_outlined),
       ('Import sales file', Icons.upload_file_outlined),
       ('Start fresh', Icons.auto_awesome_outlined),
     ];
@@ -522,7 +552,12 @@ class _ImportChoices extends StatelessWidget {
                       : AppColors.line,
                   child: Row(
                     children: [
-                      ProfitIcon(item.$2, size: 40),
+                      if (item.$1 == 'Connect eBay')
+                        const _EbayLogo()
+                      else if (item.$1 == 'Connect Etsy')
+                        const _EtsyLogo()
+                      else
+                        ProfitIcon(item.$2, size: 40),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -549,11 +584,13 @@ class _ImportChoices extends StatelessWidget {
 class _GoalSetup extends StatelessWidget {
   const _GoalSetup({
     required this.type,
+    required this.currency,
     required this.controller,
     required this.onChanged,
   });
 
   final String type;
+  final String currency;
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
@@ -563,18 +600,16 @@ class _GoalSetup extends StatelessWidget {
       children: [
         DropdownButtonFormField<String>(
           initialValue: type,
-          items:
-              const [
-                    'Monthly profit',
-                    'Monthly revenue',
-                    'Yearly profit',
-                    'Yearly revenue',
-                  ]
-                  .map(
-                    (value) =>
-                        DropdownMenuItem(value: value, child: Text(value)),
-                  )
-                  .toList(),
+          items: const [
+            'Monthly profit',
+            'Monthly revenue',
+            'Yearly profit',
+            'Yearly revenue',
+          ]
+              .map(
+                (value) => DropdownMenuItem(value: value, child: Text(value)),
+              )
+              .toList(),
           onChanged: (value) {
             if (value != null) onChanged(value);
           },
@@ -583,10 +618,12 @@ class _GoalSetup extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            prefixIcon: Icon(
-              Icons.currency_pound_rounded,
+          decoration: InputDecoration(
+            prefixText: '${_currencySymbol(currency)} ',
+            prefixStyle: const TextStyle(
               color: AppColors.green,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
             ),
             labelText: 'Target',
           ),
@@ -594,6 +631,81 @@ class _GoalSetup extends StatelessWidget {
       ],
     );
   }
+}
+
+class _NameSetup extends StatelessWidget {
+  const _NameSetup({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      autofocus: true,
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      onChanged: onChanged,
+      decoration: const InputDecoration(labelText: 'Your name'),
+    );
+  }
+}
+
+class _EbayLogo extends StatelessWidget {
+  const _EbayLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Center(
+        child: RichText(
+          text: const TextSpan(
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            children: [
+              TextSpan(text: 'e', style: TextStyle(color: Color(0xFFE53238))),
+              TextSpan(text: 'b', style: TextStyle(color: Color(0xFF0064D2))),
+              TextSpan(text: 'a', style: TextStyle(color: Color(0xFFF5AF02))),
+              TextSpan(text: 'y', style: TextStyle(color: Color(0xFF86B817))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EtsyLogo extends StatelessWidget {
+  const _EtsyLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 40,
+      height: 40,
+      child: Center(
+        child: Text(
+          'Etsy',
+          style: TextStyle(
+            color: Color(0xFFF1641E),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'serif',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _currencySymbol(String currency) {
+  return switch (currency) {
+    'EUR' => '€',
+    'GBP' => '£',
+    _ => r'$',
+  };
 }
 
 class _ThresholdIntro extends StatelessWidget {

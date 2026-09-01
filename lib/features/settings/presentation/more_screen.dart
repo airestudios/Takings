@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:profit_track/ads/interstitial_manager.dart';
 import 'package:profit_track/app/theme.dart';
 import 'package:profit_track/features/shared/presentation/app_card.dart';
 import 'package:profit_track/features/shared/presentation/app_header.dart';
 import 'package:profit_track/features/shared/presentation/profit_icon.dart';
 import 'package:profit_track/features/shared/presentation/profit_scaffold.dart';
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
+
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      InterstitialManager.instance.showPendingIfReady();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +74,12 @@ class MoreScreen extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   child: Column(
                     children: [
+                      _MenuRow(
+                        icon: Icons.handyman_outlined,
+                        label: 'Seller Tools',
+                        onTap: () => context.go('/seller-tools'),
+                      ),
+                      const Divider(height: 1, indent: 62),
                       _MenuRow(
                         icon: Icons.upload_file_outlined,
                         label: 'Import sales file',

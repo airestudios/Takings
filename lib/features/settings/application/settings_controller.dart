@@ -12,7 +12,7 @@ class SettingsController extends AsyncNotifier<AppSettings> {
   Future<AppSettings> build() async {
     final preferences = await SharedPreferences.getInstance();
     return AppSettings(
-      displayName: preferences.getString('display_name') ?? 'Alex',
+      displayName: preferences.getString('display_name') ?? '',
       countryCode: preferences.getString('country_code') ?? 'GB',
       currencyCode: preferences.getString('currency_code') ?? 'GBP',
       notificationsEnabled:

@@ -53,6 +53,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         .toList();
     final vintedRevenue = ProfitCalculator.revenue(vintedSales);
     final goalTarget = _monthlyProfitGoal();
+    final previousMonth = DateTime(now.year, now.month - 1);
+    final currentMonthSales = sales
+        .where(
+          (sale) => sale.soldAt.year == now.year && sale.soldAt.month == now.month,
+        )
+        .toList();
+    final previousMonthSales = sales
+        .where(
+          (sale) =>
+              sale.soldAt.year == previousMonth.year &&
+              sale.soldAt.month == previousMonth.month,
+        )
+        .toList();
+    final currentMonthExpenses = expenses
+        .where(
+          (expense) =>
+              expense.spentAt.year == now.year &&
+              expense.spentAt.month == now.month,
+        )
+        .fold<int>(0, (sum, expense) => sum + expense.amountMinor);
+    final previousMonthExpenses = expenses
+        .where(
+          (expense) =>
+              expense.spentAt.year == previousMonth.year &&
+              expense.spentAt.month == previousMonth.month,
+        )
+        .fold<int>(0, (sum, expense) => sum + expense.amountMinor);
+    final currentMonthProfit =
+        ProfitCalculator.netProfit(currentMonthSales) - currentMonthExpenses;
+    final previousMonthProfit =
+        ProfitCalculator.netProfit(previousMonthSales) - previousMonthExpenses;
+    final monthChangePercent = previousMonthProfit == 0
+        ? 0
+        : (((currentMonthProfit - previousMonthProfit) /
+                      previousMonthProfit.abs()) *
+                  100)
+              .round();
 
     return ProfitScaffold(
       currentIndex: 0,
@@ -69,7 +106,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onSelected: (value) => setState(() => period = value),
                 ),
                 const SizedBox(height: 12),
-                _ProfitHero(profitMinor: profit, targetMinor: goalTarget),
+                _ProfitHero(
+                  profitMinor: profit,
+                  targetMinor: goalTarget,
+                  changePercent: monthChangePercent,
+                ),
                 const SizedBox(height: 12),
                 _KpiGrid(
                   revenueMinor: revenue,
@@ -92,16 +133,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   progressColor: AppColors.orange,
                   badge: yearRevenue >= 75000 ? 'Approaching' : null,
                 ),
-                const SizedBox(height: 8),
-                _TrackerCard(
-                  leadingIcon: Icons.sell_outlined,
-                  iconColor: AppColors.teal,
-                  title: 'Vinted Marketplace Reporting',
-                  value:
-                      '${vintedSales.length} / 30 sales\n${Money(vintedRevenue).format(decimals: false)} proceeds',
-                  progress: (vintedSales.length / 30).clamp(0, 1),
-                  progressColor: AppColors.teal,
-                ),
+                if (vintedSales.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _TrackerCard(
+                    leadingIcon: Icons.sell_outlined,
+                    iconColor: AppColors.teal,
+                    title: 'Vinted Marketplace Reporting',
+                    value:
+                        '${vintedSales.length} / 30 sales\n${Money(vintedRevenue).format(decimals: false)} proceeds',
+                    progress: (vintedSales.length / 30).clamp(0, 1),
+                    progressColor: AppColors.teal,
+                  ),
+                ],
                 const SizedBox(height: 8),
                 _TrackerCard(
                   leadingIcon: Icons.description_outlined,
@@ -186,10 +229,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class _ProfitHero extends StatelessWidget {
-  const _ProfitHero({required this.profitMinor, required this.targetMinor});
+  const _ProfitHero({
+    required this.profitMinor,
+    required this.targetMinor,
+    required this.changePercent,
+  });
 
   final int profitMinor;
   final int targetMinor;
+  final int changePercent;
 
   @override
   Widget build(BuildContext context) {
@@ -234,23 +282,31 @@ class _ProfitHero extends StatelessWidget {
                         letterSpacing: -1.2,
                       ),
                     ),
-                    const Row(
+                    Row(
                       children: [
                         Icon(
-                          Icons.trending_up_rounded,
-                          color: AppColors.green,
+                          changePercent > 0
+                              ? Icons.trending_up_rounded
+                              : changePercent < 0
+                              ? Icons.trending_down_rounded
+                              : Icons.trending_flat_rounded,
+                          color: changePercent == 0
+                              ? AppColors.slate
+                              : AppColors.green,
                           size: 21,
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         Text(
-                          '+18%',
+                          '${changePercent > 0 ? '+' : ''}$changePercent%',
                           style: TextStyle(
-                            color: AppColors.green,
+                            color: changePercent == 0
+                                ? AppColors.slate
+                                : AppColors.green,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(width: 5),
-                        Text(
+                        const SizedBox(width: 5),
+                        const Text(
                           'vs last month',
                           style: TextStyle(
                             color: AppColors.slate,
@@ -575,33 +631,6 @@ class _RecentSalesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visible = sales.take(3).toList();
-    final fallback = [
-      Sale(
-        id: 'a',
-        title: 'Nike Hoodie',
-        marketplace: 'Vinted',
-        soldAt: DateTime.now(),
-        sellingPriceMinor: 5500,
-        purchaseCostMinor: 3500,
-      ),
-      Sale(
-        id: 'b',
-        title: 'Carhartt Tee',
-        marketplace: 'eBay',
-        soldAt: DateTime.now(),
-        sellingPriceMinor: 2800,
-        purchaseCostMinor: 1850,
-      ),
-      Sale(
-        id: 'c',
-        title: 'Vintage Jacket',
-        marketplace: 'Vinted',
-        soldAt: DateTime.now(),
-        sellingPriceMinor: 7800,
-        purchaseCostMinor: 5000,
-      ),
-    ];
-    final rows = visible.length == 3 ? visible : fallback;
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,49 +649,60 @@ class _RecentSalesCard extends StatelessWidget {
               ),
             ],
           ),
-          ...rows.map(
-            (sale) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.paleGreen,
-                      borderRadius: BorderRadius.circular(5),
+          if (visible.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: Text(
+                  'No recent activity found',
+                  style: TextStyle(fontSize: 12, color: AppColors.slate),
+                ),
+              ),
+            )
+          else
+            ...visible.map(
+              (sale) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.paleGreen,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Icon(Icons.checkroom_rounded, size: 18),
                     ),
-                    child: const Icon(Icons.checkroom_rounded, size: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      sale.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        Money(sale.sellingPriceMinor).format(),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        sale.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 11),
                       ),
-                      Text(
-                        Money(sale.netProfitMinor).format(),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.green,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          Money(sale.sellingPriceMinor).format(),
+                          style: const TextStyle(fontSize: 11),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        Text(
+                          Money(sale.netProfitMinor).format(),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

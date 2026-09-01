@@ -9,7 +9,7 @@ class ProfitTrackApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'ProfitTrack',
+      title: 'Takings',
       debugShowCheckedModeBanner: false,
       theme: ProfitTrackTheme.light,
       routerConfig: ref.watch(routerProvider),

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:profit_track/ads/interstitial_manager.dart';
 import 'package:profit_track/database/database_provider.dart';
 import 'package:profit_track/features/sales/data/sales_repository.dart';
 import 'package:profit_track/features/sales/domain/sale.dart';
@@ -27,6 +28,7 @@ class SalesController extends AsyncNotifier<List<Sale>> {
   Future<void> add(Sale sale) async {
     await repository.save(sale);
     await load();
+    await InterstitialManager.instance.recordMeaningfulAction();
   }
 
   Future<void> remove(String id) async {

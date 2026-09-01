@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:profit_track/ads/interstitial_manager.dart';
 import 'package:profit_track/database/database_provider.dart';
 import 'package:profit_track/features/inventory/data/inventory_repository.dart';
 import 'package:profit_track/features/inventory/domain/inventory_item.dart';
@@ -24,6 +25,7 @@ class InventoryController extends AsyncNotifier<List<InventoryItem>> {
   Future<void> save(InventoryItem item) async {
     await repository.save(item);
     state = AsyncData(await repository.getAll());
+    await InterstitialManager.instance.recordMeaningfulAction();
   }
 
   Future<void> remove(String id) async {

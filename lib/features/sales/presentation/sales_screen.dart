@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:profit_track/ads/ad_banner.dart';
+import 'package:profit_track/ads/ad_service.dart';
+import 'package:profit_track/ads/native_ad_card.dart';
 import 'package:intl/intl.dart';
 import 'package:profit_track/app/theme.dart';
 import 'package:profit_track/core/money.dart';
@@ -118,16 +121,37 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
                         sliver: SliverList.separated(
-                          itemCount: filtered.length,
+                          itemCount:
+                              filtered.length + (filtered.length >= 6 ? 1 : 0),
                           separatorBuilder: (context, index) =>
                               const SizedBox(height: 8),
-                          itemBuilder: (context, index) => _SaleRow(
-                            sale: filtered[index],
-                            onEdit: () => context.push(
-                              '/edit-sale',
-                              extra: filtered[index],
-                            ),
-                            onDelete: () => _confirmDelete(filtered[index]),
+                          itemBuilder: (context, index) {
+                            if (filtered.length >= 6 && index == 6) {
+                              return const NativeAdCard(
+                                placement: AdPlacements.salesNative,
+                              );
+                            }
+                            final saleIndex = filtered.length >= 6 && index > 6
+                                ? index - 1
+                                : index;
+                            return _SaleRow(
+                              sale: filtered[saleIndex],
+                              onEdit: () => context.push(
+                                '/edit-sale',
+                                extra: filtered[saleIndex],
+                              ),
+                              onDelete: () =>
+                                  _confirmDelete(filtered[saleIndex]),
+                            );
+                          },
+                        ),
+                      ),
+                    if (filtered.isNotEmpty)
+                      const SliverPadding(
+                        padding: EdgeInsets.fromLTRB(14, 0, 14, 20),
+                        sliver: SliverToBoxAdapter(
+                          child: ProfitTrackAdBanner(
+                            placement: AdPlacements.salesBanner,
                           ),
                         ),
                       ),

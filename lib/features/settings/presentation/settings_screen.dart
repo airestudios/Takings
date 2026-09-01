@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:profit_track/ads/ad_service.dart';
 import 'package:profit_track/features/settings/application/settings_controller.dart';
 import 'package:profit_track/features/settings/domain/app_settings.dart';
 import 'package:profit_track/features/shared/presentation/app_card.dart';
 import 'package:profit_track/features/shared/presentation/profit_scaffold.dart';
+import 'package:profit_track/notifications/notification_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -140,6 +142,23 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           ],
         ),
       ),
+      const SizedBox(height: 14),
+      FutureBuilder<bool>(
+        future: AdService.privacyOptionsRequired(),
+        builder: (context, snapshot) {
+          if (snapshot.data != true) return const SizedBox.shrink();
+          return AppCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Advertising privacy options'),
+              subtitle: const Text('Review or change your consent choices'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: AdService.showPrivacyOptions,
+            ),
+          );
+        },
+      ),
       const SizedBox(height: 18),
       FilledButton.icon(
         onPressed: _save,
@@ -150,11 +169,14 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   );
 
   Future<void> _save() async {
+    if (notifications && !widget.settings.notificationsEnabled) {
+      notifications = await NotificationService.instance.requestPermission();
+    }
     await ref
         .read(settingsControllerProvider.notifier)
         .save(
           widget.settings.copyWith(
-            displayName: name.text.trim().isEmpty ? 'Alex' : name.text.trim(),
+            displayName: name.text.trim(),
             countryCode: country,
             currencyCode: currency,
             notificationsEnabled: notifications,

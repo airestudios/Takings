@@ -2,6 +2,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:profit_track/ads/ad_banner.dart';
+import 'package:profit_track/ads/ad_service.dart';
+import 'package:profit_track/ads/native_ad_card.dart';
 import 'package:profit_track/app/theme.dart';
 import 'package:profit_track/core/money.dart';
 import 'package:profit_track/features/sales/application/sales_controller.dart';
@@ -90,6 +93,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                 const SizedBox(height: 12),
                 _ProfitChart(sales: allSales),
                 const SizedBox(height: 12),
+                const NativeAdCard(placement: AdPlacements.insightsNative),
+                const SizedBox(height: 12),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     if (constraints.maxWidth < 440) {
@@ -135,6 +140,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       ],
                     );
                   },
+                ),
+                const SizedBox(height: 12),
+                const ProfitTrackAdBanner(
+                  placement: AdPlacements.insightsBanner,
                 ),
               ],
             ),

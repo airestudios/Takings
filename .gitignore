@@ -22,3 +22,4 @@ ios/Flutter/ephemeral/
 *.p12
 *.mobileprovision
 .env
+build-stale-release/

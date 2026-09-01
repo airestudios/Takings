@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:profit_track/ads/interstitial_manager.dart';
 import 'package:profit_track/app/theme.dart';
 import 'package:profit_track/core/money.dart';
 import 'package:profit_track/features/expenses/application/expenses_controller.dart';
@@ -192,6 +193,8 @@ class ReportsScreen extends ConsumerWidget {
   ) async {
     try {
       final file = await action();
+      await InterstitialManager.instance.recordMeaningfulAction();
+      await InterstitialManager.instance.markSafeTransitionPending();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

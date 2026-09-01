@@ -1,35 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:profit_track/app/theme.dart';
+import 'package:profit_track/features/settings/application/settings_controller.dart';
 
-class AppHeader extends StatelessWidget {
+class AppHeader extends ConsumerWidget {
   const AppHeader({super.key, this.compact = false});
 
   final bool compact;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final displayName =
+        ref.watch(settingsControllerProvider).value?.displayName.trim() ?? '';
+    final greeting = _greetingForHour(DateTime.now().hour);
+
     return Padding(
       padding: EdgeInsets.fromLTRB(14, compact ? 10 : 16, 14, 8),
       child: Row(
         children: [
           const _Logo(),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Good morning, Alex 👋',
-                  style: TextStyle(fontSize: 13, color: AppColors.slate),
-                ),
-                Text(
-                  'ProfitTrack',
-                  style: TextStyle(
-                    fontSize: 22,
-                    height: 1.05,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
+                  displayName.isEmpty
+                      ? '$greeting 👋'
+                      : '$greeting, $displayName 👋',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.slate,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Image.asset(
+                  'assets/images/takings_wordmark_header.png',
+                  height: 22,
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.contain,
                 ),
               ],
             ),
@@ -57,29 +66,14 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 46,
       height: 46,
-      decoration: const BoxDecoration(
-        color: AppColors.green,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x26079447),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const Center(
-        child: Text(
-          'P',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            fontStyle: FontStyle.italic,
-          ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.asset(
+          'assets/images/takings_icon.png',
+          fit: BoxFit.cover,
         ),
       ),
     );
@@ -133,4 +127,14 @@ class _HeaderAction extends StatelessWidget {
       ),
     );
   }
+}
+
+String _greetingForHour(int hour) {
+  if (hour < 12) {
+    return 'Good morning';
+  }
+  if (hour < 18) {
+    return 'Good afternoon';
+  }
+  return 'Good evening';
 }
