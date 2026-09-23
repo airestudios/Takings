@@ -10,7 +10,14 @@ module.exports = async function handler(request, response) {
   if (request.method === 'GET') {
     const challengeCode = request.query.challenge_code;
     const verificationToken = process.env.EBAY_DELETION_VERIFICATION_TOKEN;
-    const endpoint = process.env.EBAY_DELETION_ENDPOINT;
+    const forwardedHost = request.headers['x-forwarded-host'];
+    const host = forwardedHost || request.headers.host;
+    const forwardedProto = request.headers['x-forwarded-proto'];
+    const protocol = forwardedProto || 'https';
+    const pathname = new URL(request.url, `${protocol}://${host}`).pathname;
+    const endpoint =
+      process.env.EBAY_DELETION_ENDPOINT ||
+      (host ? `${protocol}://${host}${pathname}` : null);
 
     if (!challengeCode) {
       return sendJson(response, 400, { error: 'Missing challenge_code' });

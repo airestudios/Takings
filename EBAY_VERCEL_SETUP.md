@@ -10,10 +10,11 @@ Add these variables to the Production environment in Vercel Project Settings:
 
 - `EBAY_DELETION_VERIFICATION_TOKEN`: the 32–80 character token entered in the
   eBay developer portal.
-- `EBAY_DELETION_ENDPOINT`: the complete deployed endpoint URL, for example
-  `https://takings-ebay.vercel.app/api/ebay-deletion`.
+- `EBAY_DELETION_ENDPOINT` (optional): the complete deployed endpoint URL, for
+  example `https://takings-ebay.vercel.app/api/ebay-deletion`. When omitted,
+  the function derives the exact endpoint URL from the incoming request.
 
-The value of `EBAY_DELETION_ENDPOINT` must exactly match the Notification
+If `EBAY_DELETION_ENDPOINT` is set, it must exactly match the Notification
 Endpoint URL entered in eBay. Do not add a trailing slash to one value unless
 it is also present in the other.
 
