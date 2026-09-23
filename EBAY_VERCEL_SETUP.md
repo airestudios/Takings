@@ -10,6 +10,10 @@ Add these variables to the Production environment in Vercel Project Settings:
 
 - `EBAY_DELETION_VERIFICATION_TOKEN`: the 32–80 character token entered in the
   eBay developer portal.
+- `EBAY_CLIENT_ID`: the Production App ID / Client ID from eBay.
+- `EBAY_CLIENT_SECRET`: the Production Cert ID from eBay. Mark this value as
+  sensitive and never add it to the repository or mobile application.
+- `EBAY_RUNAME`: the Production RuName assigned to the eBay sign-in redirect.
 - `EBAY_DELETION_ENDPOINT` (optional): the complete deployed endpoint URL, for
   example `https://takings-ebay.vercel.app/api/ebay-deletion`. When omitted,
   the function derives the exact endpoint URL from the incoming request.
@@ -21,6 +25,10 @@ it is also present in the other.
 After adding the variables, redeploy the Vercel Production deployment. Then
 enter the endpoint URL and the same verification token in eBay's Marketplace
 Account Deletion notification settings.
+
+The Accepted Auth URL registered against `EBAY_RUNAME` must be:
+
+`https://takings-ebay-airedesign.vercel.app/api/ebay/callback`
 
 The endpoint answers eBay's GET validation challenge and acknowledges POST
 deletion notifications. It deliberately does not log notification payloads.

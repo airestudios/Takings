@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:profit_track/app/theme.dart';
 import 'package:profit_track/features/shared/presentation/app_card.dart';
 import 'package:profit_track/features/shared/presentation/profit_icon.dart';
+import 'package:profit_track/marketplace_integrations/ebay/ebay_connection_controller.dart';
+import 'package:profit_track/marketplace_integrations/etsy/etsy_connection_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final controller = PageController();
   int page = 0;
   final nameController = TextEditingController();
@@ -23,6 +26,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String importChoice = 'Start fresh';
   String goalType = 'Monthly profit';
   final goalController = TextEditingController(text: '1000');
+  bool connectingMarketplace = false;
 
   @override
   void dispose() {
@@ -39,23 +43,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.asset(
-                      'assets/images/takings_icon.png',
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Takings',
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-                  ),
                   const Spacer(),
                   Text(
                     '${page + 1} of 9',
@@ -145,8 +135,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     subtitle: 'Connections are optional and never block setup.',
                     child: _ImportChoices(
                       selected: importChoice,
-                      onChanged: (value) =>
-                          setState(() => importChoice = value),
+                      connectingMarketplace: connectingMarketplace,
+                      onChanged: _selectImportChoice,
                     ),
                   ),
                   _ChoicePage(
@@ -186,8 +176,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     onPressed: page == 1 && nameController.text.trim().isEmpty
                         ? null
                         : page == 8
-                            ? _finish
-                            : _next,
+                        ? _finish
+                        : _next,
                     style: TextButton.styleFrom(
                       minimumSize: const Size(0, 48),
                       padding: const EdgeInsets.symmetric(
@@ -214,6 +204,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
+    FocusManager.instance.primaryFocus?.unfocus();
     controller.nextPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
@@ -221,10 +212,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _previous() {
+    FocusManager.instance.primaryFocus?.unfocus();
     controller.previousPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
+  }
+
+  Future<void> _selectImportChoice(String value) async {
+    if (connectingMarketplace) return;
+    setState(() => importChoice = value);
+    if (value != 'Connect Etsy' && value != 'Connect eBay') return;
+
+    setState(() => connectingMarketplace = true);
+    try {
+      final accountName = value == 'Connect eBay'
+          ? await _connectEbay()
+          : await _connectEtsy();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$accountName connected.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => connectingMarketplace = false);
+    }
+  }
+
+  Future<String> _connectEbay() async {
+    await ref.read(ebayConnectionControllerProvider.future);
+    await ref.read(ebayConnectionControllerProvider.notifier).connect();
+    return 'eBay';
+  }
+
+  Future<String> _connectEtsy() async {
+    await ref.read(etsyConnectionControllerProvider.future);
+    final account = await ref
+        .read(etsyConnectionControllerProvider.notifier)
+        .connect();
+    return account.shopName ?? 'Etsy';
   }
 
   Future<void> _finish() async {
@@ -249,52 +279,33 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/images/takings_background.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 26, 20, 18),
-        child: Column(
-          children: [
-            const SizedBox(height: 4),
-            Image.asset(
-              'assets/images/takings_icon.png',
-              width: 126,
-              height: 126,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 18),
-            Image.asset(
-              'assets/images/takings_wordmark.png',
-              width: 280,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 30),
-            const _Benefit(
-              icon: Icons.trending_up_rounded,
-              title: 'Track reseller earnings',
-              text:
-                  'See real profit after purchase costs, fees, postage and packaging.',
-            ),
-            const SizedBox(height: 10),
-            const _Benefit(
-              icon: Icons.track_changes_rounded,
-              title: 'Reach profit goals',
-              text: 'Know if you’re on pace and what you need each day.',
-            ),
-            const SizedBox(height: 10),
-            const _Benefit(
-              icon: Icons.shield_outlined,
-              title: 'Monitor important thresholds',
-              text:
-                  'Get general guidance as your recorded activity approaches relevant rules.',
-            ),
-          ],
-        ),
+    return _ChoicePage(
+      title: 'Know exactly what you’re making',
+      subtitle:
+          'Fast, private reseller tracking that works even when you’re offline.',
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          const _Benefit(
+            icon: Icons.trending_up_rounded,
+            title: 'Track reseller earnings',
+            text:
+                'See real profit after purchase costs, fees, postage and packaging.',
+          ),
+          const SizedBox(height: 10),
+          const _Benefit(
+            icon: Icons.track_changes_rounded,
+            title: 'Reach profit goals',
+            text: 'Know if you’re on pace and what you need each day.',
+          ),
+          const SizedBox(height: 10),
+          const _Benefit(
+            icon: Icons.shield_outlined,
+            title: 'Monitor important thresholds',
+            text:
+                'Get general guidance as your recorded activity approaches relevant rules.',
+          ),
+        ],
       ),
     );
   }
@@ -525,9 +536,14 @@ class _RadioChoices extends StatelessWidget {
 }
 
 class _ImportChoices extends StatelessWidget {
-  const _ImportChoices({required this.selected, required this.onChanged});
+  const _ImportChoices({
+    required this.selected,
+    required this.connectingMarketplace,
+    required this.onChanged,
+  });
 
   final String selected;
+  final bool connectingMarketplace;
   final ValueChanged<String> onChanged;
 
   @override
@@ -565,7 +581,14 @@ class _ImportChoices extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
-                      if (selected == item.$1)
+                      if (item.$1 == selected &&
+                          item.$1.startsWith('Connect ') &&
+                          connectingMarketplace)
+                        const SizedBox.square(
+                          dimension: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (selected == item.$1)
                         const Icon(
                           Icons.check_circle_rounded,
                           color: AppColors.green,
@@ -600,16 +623,18 @@ class _GoalSetup extends StatelessWidget {
       children: [
         DropdownButtonFormField<String>(
           initialValue: type,
-          items: const [
-            'Monthly profit',
-            'Monthly revenue',
-            'Yearly profit',
-            'Yearly revenue',
-          ]
-              .map(
-                (value) => DropdownMenuItem(value: value, child: Text(value)),
-              )
-              .toList(),
+          items:
+              const [
+                    'Monthly profit',
+                    'Monthly revenue',
+                    'Yearly profit',
+                    'Yearly revenue',
+                  ]
+                  .map(
+                    (value) =>
+                        DropdownMenuItem(value: value, child: Text(value)),
+                  )
+                  .toList(),
           onChanged: (value) {
             if (value != null) onChanged(value);
           },
@@ -665,10 +690,22 @@ class _EbayLogo extends StatelessWidget {
           text: const TextSpan(
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             children: [
-              TextSpan(text: 'e', style: TextStyle(color: Color(0xFFE53238))),
-              TextSpan(text: 'b', style: TextStyle(color: Color(0xFF0064D2))),
-              TextSpan(text: 'a', style: TextStyle(color: Color(0xFFF5AF02))),
-              TextSpan(text: 'y', style: TextStyle(color: Color(0xFF86B817))),
+              TextSpan(
+                text: 'e',
+                style: TextStyle(color: Color(0xFFE53238)),
+              ),
+              TextSpan(
+                text: 'b',
+                style: TextStyle(color: Color(0xFF0064D2)),
+              ),
+              TextSpan(
+                text: 'a',
+                style: TextStyle(color: Color(0xFFF5AF02)),
+              ),
+              TextSpan(
+                text: 'y',
+                style: TextStyle(color: Color(0xFF86B817)),
+              ),
             ],
           ),
         ),

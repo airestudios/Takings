@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:profit_track/ads/interstitial_manager.dart';
 import 'package:profit_track/app/theme.dart';
@@ -6,6 +7,8 @@ import 'package:profit_track/features/shared/presentation/app_card.dart';
 import 'package:profit_track/features/shared/presentation/app_header.dart';
 import 'package:profit_track/features/shared/presentation/profit_icon.dart';
 import 'package:profit_track/features/shared/presentation/profit_scaffold.dart';
+import 'package:profit_track/marketplace_integrations/ebay/ebay_connection_controller.dart';
+import 'package:profit_track/marketplace_integrations/etsy/etsy_connection_controller.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -83,7 +86,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       _MenuRow(
                         icon: Icons.upload_file_outlined,
                         label: 'Import sales file',
-                        onTap: () => _comingSoon(context, 'CSV import'),
+                        onTap: () => context.go('/import-sales'),
                       ),
                       const Divider(height: 1, indent: 62),
                       _MenuRow(
@@ -95,7 +98,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       _MenuRow(
                         icon: Icons.backup_outlined,
                         label: 'Backup & restore',
-                        onTap: () => _comingSoon(context, 'Backup'),
+                        onTap: () => context.go('/backup-restore'),
                       ),
                     ],
                   ),
@@ -139,16 +142,6 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$feature is prepared for the next implementation phase.',
-        ),
       ),
     );
   }
@@ -206,11 +199,35 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
-class _ConnectedAccountsSheet extends StatelessWidget {
+class _ConnectedAccountsSheet extends ConsumerWidget {
   const _ConnectedAccountsSheet();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ebayValue = ref.watch(ebayConnectionControllerProvider);
+    final ebay = ebayValue.value;
+    final ebayStatus = ebayValue.isLoading
+        ? 'Checking connection…'
+        : ebay?.busy == true
+        ? ebay!.connected
+              ? 'Syncing eBay sales…'
+              : 'Opening eBay sign-in…'
+        : ebay?.connected == true
+        ? 'Connected · tap to sync'
+        : 'Connect and import sales';
+    final etsyValue = ref.watch(etsyConnectionControllerProvider);
+    final etsy = etsyValue.value;
+    final etsyStatus = etsyValue.isLoading
+        ? 'Checking connection…'
+        : etsy?.busy == true
+        ? etsy!.connected
+              ? 'Syncing Etsy sales…'
+              : 'Opening Etsy sign-in…'
+        : etsy?.connected == true
+        ? etsy!.shopName == null
+              ? 'Connected · tap to sync'
+              : 'Connected to ${etsy.shopName} · tap to sync'
+        : 'Connect and import sales';
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -228,17 +245,74 @@ class _ConnectedAccountsSheet extends StatelessWidget {
               style: TextStyle(color: AppColors.slate, fontSize: 12),
             ),
             const SizedBox(height: 14),
-            const _AccountRow(
+            _AccountRow(
               name: 'eBay',
-              status: 'Connect',
-              color: Color(0xFFE53238),
-              available: true,
+              status: ebayStatus,
+              color: const Color(0xFFE53238),
+              onTap: ebayValue.isLoading || ebay?.busy == true
+                  ? null
+                  : () => _connectOrSyncEbay(
+                      context,
+                      ref,
+                      ebay?.connected == true,
+                    ),
+              trailing: ebay?.busy == true || ebayValue.isLoading
+                  ? const SizedBox.square(
+                      dimension: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : ebay?.connected == true
+                  ? PopupMenuButton<String>(
+                      tooltip: 'eBay account options',
+                      onSelected: (action) {
+                        if (action == 'sync') {
+                          _connectOrSyncEbay(context, ref, true);
+                        } else if (action == 'disconnect') {
+                          _disconnectEbay(context, ref);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'sync', child: Text('Sync now')),
+                        PopupMenuItem(
+                          value: 'disconnect',
+                          child: Text('Disconnect'),
+                        ),
+                      ],
+                    )
+                  : null,
             ),
             const SizedBox(height: 8),
-            const _AccountRow(
+            _AccountRow(
               name: 'Etsy',
-              status: 'Requires approval',
-              color: Color(0xFFF1641E),
+              status: etsyStatus,
+              color: const Color(0xFFF1641E),
+              onTap: etsyValue.isLoading || etsy?.busy == true
+                  ? null
+                  : () => _connectOrSync(context, ref, etsy?.connected == true),
+              trailing: etsy?.busy == true || etsyValue.isLoading
+                  ? const SizedBox.square(
+                      dimension: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : etsy?.connected == true
+                  ? PopupMenuButton<String>(
+                      tooltip: 'Etsy account options',
+                      onSelected: (action) {
+                        if (action == 'sync') {
+                          _connectOrSync(context, ref, true);
+                        } else if (action == 'disconnect') {
+                          _disconnect(context, ref);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'sync', child: Text('Sync now')),
+                        PopupMenuItem(
+                          value: 'disconnect',
+                          child: Text('Disconnect'),
+                        ),
+                      ],
+                    )
+                  : null,
             ),
             const SizedBox(height: 8),
             const _AccountRow(
@@ -257,6 +331,98 @@ class _ConnectedAccountsSheet extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _connectOrSyncEbay(
+    BuildContext context,
+    WidgetRef ref,
+    bool connected,
+  ) async {
+    try {
+      if (connected) {
+        final result = await ref
+            .read(ebayConnectionControllerProvider.notifier)
+            .sync();
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.imported == 0
+                  ? 'eBay is up to date.'
+                  : '${result.imported} eBay sale${result.imported == 1 ? '' : 's'} imported. Add purchase costs and fees for accurate profit.',
+            ),
+          ),
+        );
+      } else {
+        await ref.read(ebayConnectionControllerProvider.notifier).connect();
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('eBay connected. Tap again to import sales.')),
+        );
+      }
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _disconnectEbay(BuildContext context, WidgetRef ref) async {
+    await ref.read(ebayConnectionControllerProvider.notifier).disconnect();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('eBay disconnected. Imported sales were kept.'),
+      ),
+    );
+  }
+
+  Future<void> _connectOrSync(
+    BuildContext context,
+    WidgetRef ref,
+    bool connected,
+  ) async {
+    try {
+      if (connected) {
+        final result = await ref
+            .read(etsyConnectionControllerProvider.notifier)
+            .sync();
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.imported == 0
+                  ? 'Etsy is up to date.'
+                  : '${result.imported} Etsy sale${result.imported == 1 ? '' : 's'} imported.',
+            ),
+          ),
+        );
+      } else {
+        final account = await ref
+            .read(etsyConnectionControllerProvider.notifier)
+            .connect();
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${account.shopName ?? 'Etsy'} connected.')),
+        );
+      }
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _disconnect(BuildContext context, WidgetRef ref) async {
+    await ref.read(etsyConnectionControllerProvider.notifier).disconnect();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Etsy disconnected. Imported sales were kept.'),
+      ),
+    );
+  }
 }
 
 class _AccountRow extends StatelessWidget {
@@ -264,17 +430,19 @@ class _AccountRow extends StatelessWidget {
     required this.name,
     required this.status,
     required this.color,
-    this.available = false,
+    this.onTap,
+    this.trailing,
   });
 
   final String name;
   final String status;
   final Color color;
-  final bool available;
+  final VoidCallback? onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    final card = AppCard(
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
@@ -292,12 +460,16 @@ class _AccountRow extends StatelessWidget {
               ],
             ),
           ),
-          if (available)
-            OutlinedButton(onPressed: () {}, child: const Text('Connect'))
-          else
-            const Icon(Icons.chevron_right_rounded, color: AppColors.slate),
+          trailing ??
+              const Icon(Icons.chevron_right_rounded, color: AppColors.slate),
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: card,
     );
   }
 }
